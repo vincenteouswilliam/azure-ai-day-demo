@@ -104,6 +104,8 @@
   "operationalInsightsWorkspaces": "log-",
   "portalDashboards": "dash-",
   "powerBIDedicatedCapacities": "pbi-",
+  "postgreSqlServers": "pgsql-",
+  "postgreSqlDatabases": "pgdb-",
   "purviewAccounts": "pview-",
   "recoveryServicesVaults": "rsv-",
   "resourcesResourceGroups": "rg-",

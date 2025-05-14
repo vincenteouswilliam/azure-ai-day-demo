@@ -109,6 +109,33 @@
     },
     "azureOpenAIChatGptDeploymentCapacity": {
       "value": "${AZURE_OPENAI_CHATGPT_DEPLOYMENT_CAPACITY=30}"
+    },
+    "postgresResourceGroupName": {
+      "value": "${AZURE_POSTGRESQL_RESOURCE_GROUP}"
+    },
+    "postgresServerName": {
+      "value": "${AZURE_POSTGRESQL_SERVER_NAME}"
+    },
+    "postgresDatabaseName": {
+      "value": "${AZURE_POSTGRESQL_DATABASE_NAME=nttaidemodb}"
+    },
+    "postgresAdministratorLogin": {
+      "value": "${AZURE_POSTGRESQL_ADMINISTRATOR_LOGIN=nttaidemoadmin}"
+    },
+    "postgresAdministratorLoginPassword": {
+      "value": "${AZURE_POSTGRESQL_ADMINISTRATOR_LOGIN_PASSWORD}"
+    },
+    "postgresSkuName": {
+      "value": "${AZURE_POSTGRESQL_SKU_NAME=Standard_B2ms}"
+    },
+    "postgresTierName": {
+      "value": "${AZURE_POSTGRESQL_TIER_NAME=Burstable}"
+    },
+    "postgresStorageSizeGB": {
+      "value": "${AZURE_POSTGRESQL_STORAGE_SIZE=32}"
+    },
+    "postgresVersion": {
+      "value": "${AZURE_POSTGRESQL_VERSION=16}"
     }
   }
 }
