@@ -47,6 +47,23 @@ if [ -z "$AZD_PREPDOCS_RAN" ] || [ "$AZD_PREPDOCS_RAN" = "false" ]; then
     echo "Running: dotnet run $args"
     dotnet run $args
 
+    # PostgreSQL preparation
+    echo "Preparing SQL statements for PostgreSQL"
+    SQL_FILE=$(echo `pwd`/scripts/postgre-ddl.txt)
+    echo "SQL commands prepared."
+
+    # Execute SQL commands with psql
+    echo "Executing SQL commands with psql"
+    psql "${AZURE_POSTGRESQL_LOCAL_CONN_STRING}" -f "${SQL_FILE}"
+
+    # Check if the command was successful
+    if [ $? -eq 0 ]; then
+        echo "Table created and data inserted successfully."
+    else
+        echo "Error: Failed to execute SQL commands."
+    fi
+
+    # Set AZD_PREPDOCS_RAN to true
     azd env set AZD_PREPDOCS_RAN "true"
 else
     echo "AZD_PREPDOCS_RAN is set to true. Skipping the run."
