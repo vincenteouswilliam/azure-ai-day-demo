@@ -63,7 +63,7 @@ resource firewallRule 'Microsoft.DBforPostgreSQL/flexibleServers/firewallRules@2
   name: 'AllowAZNTTAI'
   properties: {
     startIpAddress: '0.0.0.0'
-    endIpAddress: '0.0.0.0'
+    endIpAddress: '255.255.255.255'
   }
 }
 
@@ -71,3 +71,5 @@ resource firewallRule 'Microsoft.DBforPostgreSQL/flexibleServers/firewallRules@2
 output postgresServerName string = postgresServer.name
 output postgresDatabaseName string = postgresDatabase.name
 output postgresConnectionString string = 'Host=${postgresServerName}.postgres.database.azure.com;Port=5432;Database=${postgresDatabaseName};Username=${administratorLogin};Password=${administratorLoginPassword};SslMode=Require;'
+output postgresLocalConnectionString string = 'postgresql://${administratorLogin}:${administratorLoginPassword}@${postgresServerName}.postgres.database.azure.com:5432/${postgresDatabaseName}?sslmode=require'
+output postgresAdministratorLoginPassword string = administratorLoginPassword

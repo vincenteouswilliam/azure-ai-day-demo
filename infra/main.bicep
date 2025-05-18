@@ -75,9 +75,6 @@ param azureChatGptDeploymentName string = 'chat'
 @description('Name of the Azure Cognitive Services Computer Vision service')
 param computerVisionServiceName string = ''
 
-@description('Name of the resource group for the Azure Cognitive Services Computer Vision service')
-param computerVisionResourceGroupName string = ''
-
 @description('Location of the resource group for the Azure Cognitive Services Computer Vision service')
 param computerVisionResourceGroupLocation string = 'eastus' // Vision vectorize API is yet to be deployed globally
 
@@ -580,11 +577,11 @@ module postgres 'core/database/postgresql.bicep' = {
     postgresServerName: !empty(postgresServerName) ? postgresServerName : '${abbrs.postgreSqlServers}${resourceToken}'
     location: location
     tags: updatedTags
-    administratorLogin: !empty(postgresAdministratorLogin) ? postgresAdministratorLogin : 'nttaidemoadmin'
+    administratorLogin: postgresAdministratorLogin
     administratorLoginPassword: postgresAdministratorLoginPassword
     postgresDatabaseName: '${abbrs.postgreSqlDatabases}${postgresDatabaseName}'
-    skuName: !empty(postgresSkuName) ? postgresSkuName : 'Standard_B2ms'
-    tier: !empty(postgresTierName) ? postgresTierName : 'Burstable'
+    skuName: postgresSkuName
+    tier: postgresTierName
     storageSizeGB: postgresStorageSizeGB
     version: postgresVersion
   }
@@ -851,3 +848,5 @@ output AZURE_POSTGRESQL_RESOURCE_GROUP string = resourceGroup.name
 output AZURE_POSTGRESQL_SERVER_NAME string = postgres.outputs.postgresServerName
 output AZURE_POSTGRESQL_DATABASE_NAME string = postgres.outputs.postgresDatabaseName
 output AZURE_POSTGRESQL_CONNECTION_STRING string = postgres.outputs.postgresConnectionString
+output AZURE_POSTGRESQL_LOCAL_CONN_STRING string = postgres.outputs.postgresLocalConnectionString
+output AZURE_POSTGRESQL_ADMINISTRATOR_LOGIN_PASSWORD string = postgres.outputs.postgresAdministratorLoginPassword
