@@ -1,5 +1,7 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
+using Microsoft.AspNetCore.Mvc.Filters;
+
 namespace MinimalApi.Extensions;
 
 internal static class WebApplicationExtensions
@@ -22,6 +24,9 @@ internal static class WebApplicationExtensions
 
         // Get DALL-E image result from prompt
         api.MapPost("images", OnPostImagePromptAsync);
+
+        // Connection to Postgresql DB
+        api.MapGet("db", OnGetDataFromDBAsync);
 
         api.MapGet("enableLogout", OnGetEnableLogout);
 
@@ -156,5 +161,26 @@ internal static class WebApplicationExtensions
         var response = new ImageResponse(result.Value.Created, imageUrls);
 
         return TypedResults.Ok(response);
+    }
+
+    private static async Task<IResult> OnGetDataFromDBAsync(IConfiguration config)
+    {
+        var connectionString = config["AZURE_POSTGRESQL_CONNECTION_STRING"];
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            return Results.Problem("Connection string not found in environment variable.");
+        }
+
+        try
+        {
+            await using var connection = new NpgsqlConnection(connectionString);
+            await connection.OpenAsync();
+            await connection.CloseAsync();
+            return Results.Ok("PostgreSQL connection successful!");
+        }
+        catch (Exception ex)
+        {
+            return Results.Problem($"Error connecting to database: {ex.Message}");
+        }
     }
 }
