@@ -19,3 +19,4 @@ global using PdfSharpCore.Pdf;
 global using PdfSharpCore.Pdf.IO;
 global using Shared;
 global using Shared.Models;
+global using Npgsql;

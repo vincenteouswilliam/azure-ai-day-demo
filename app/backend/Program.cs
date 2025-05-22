@@ -52,7 +52,7 @@ else
             """;
         options.InstanceName = "content";
 
-        
+
     });
 
     // set application telemetry
