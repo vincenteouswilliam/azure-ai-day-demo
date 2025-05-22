@@ -367,6 +367,7 @@ module web './app/web.bicep' = {
     openAiChatGptDeployment: useAOAI ? azureChatGptDeploymentName : ''
     openAiEmbeddingDeployment: useAOAI ? azureEmbeddingDeploymentName : ''
     serviceBinds: []
+    postgresConnectionString: postgres.outputs.postgresConnectionString
   }
 }
 
@@ -411,6 +412,7 @@ module function './app/function.bicep' = {
       USE_AOAI: string(useAOAI)
       AZURE_COMPUTER_VISION_ENDPOINT: useVision ? computerVision.outputs.endpoint : ''
       OPENAI_API_KEY: useAOAI ? '' : openAIApiKey
+      AZURE_POSTGRESQL_CONNECTION_STRING: postgres.outputs.postgresConnectionString
     }
   }
 }
@@ -579,7 +581,9 @@ module postgres 'core/database/postgresql.bicep' = {
     tags: updatedTags
     administratorLogin: postgresAdministratorLogin
     administratorLoginPassword: postgresAdministratorLoginPassword
-    postgresDatabaseName: '${abbrs.postgreSqlDatabases}${postgresDatabaseName}'
+    postgresDatabaseName: startsWith(postgresDatabaseName, abbrs.postgreSqlDatabases)
+      ? postgresDatabaseName
+      : '${abbrs.postgreSqlDatabases}${postgresDatabaseName}'
     skuName: postgresSkuName
     tier: postgresTierName
     storageSizeGB: postgresStorageSizeGB

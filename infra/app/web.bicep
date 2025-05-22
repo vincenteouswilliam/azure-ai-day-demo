@@ -65,6 +65,9 @@ param openAiApiKey string
 @description('An array of service binds')
 param serviceBinds array
 
+@description('PostgreSQL connection string')
+param postgresConnectionString string
+
 resource webIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
   name: identityName
   location: location
@@ -81,7 +84,7 @@ module webKeyVaultAccess '../core/security/keyvault-access.bicep' = {
 
 module app '../core/host/container-app-upsert.bicep' = {
   name: '${serviceName}-container-app'
-  dependsOn: [ webKeyVaultAccess ]
+  dependsOn: [webKeyVaultAccess]
   params: {
     name: name
     location: location
@@ -148,6 +151,10 @@ module app '../core/host/container-app-upsert.bicep' = {
       {
         name: 'OPENAI_API_KEY'
         value: openAiApiKey
+      }
+      {
+        name: 'AZURE_POSTGRESQL_CONNECTION_STRING'
+        value: postgresConnectionString
       }
     ]
     targetPort: 8080
