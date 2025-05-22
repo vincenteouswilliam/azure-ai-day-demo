@@ -3,10 +3,20 @@
 using System.Text.Json.Serialization;
 
 namespace Shared.Models;
+
+public enum QueryMode
+{
+    Document = 0,
+    Database
+}
+
 public record RequestOverrides
 {
     [JsonPropertyName("semantic_ranker")]
     public bool SemanticRanker { get; set; } = false;
+
+    [JsonPropertyName("query_mode")]
+    public QueryMode QueryMode { get; set; } = QueryMode.Document; // Default to Document, can choose between Database and Document
 
     [JsonPropertyName("retrieval_mode")]
     public RetrievalMode RetrievalMode { get; set; } = RetrievalMode.Vector; // available option: Text, Vector, Hybrid
@@ -19,6 +29,9 @@ public record RequestOverrides
 
     [JsonPropertyName("top")]
     public int? Top { get; set; } = 3;
+
+    [JsonPropertyName("db_top")]
+    public int? DBTop { get; set; } = 15;
 
     [JsonPropertyName("temperature")]
     public int? Temperature { get; set; }
