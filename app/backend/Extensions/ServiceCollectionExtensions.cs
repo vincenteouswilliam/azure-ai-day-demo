@@ -76,24 +76,35 @@ internal static class ServiceCollectionExtensions
         });
 
         services.AddSingleton<AzureBlobStorageService>();
+
+        // Add service for PostgreSQL
+        services.AddSingleton<PostgresTicketService>(sp =>
+        {
+            var config = sp.GetRequiredService<IConfiguration>();
+
+            return new PostgresTicketService(config);
+        });
+
         services.AddSingleton<ReadRetrieveReadChatService>(sp =>
         {
             var config = sp.GetRequiredService<IConfiguration>();
             var useVision = config["UseVision"] == "true";
             var openAIClient = sp.GetRequiredService<OpenAIClient>();
             var searchClient = sp.GetRequiredService<ISearchService>();
+            var postgreClient = sp.GetRequiredService<PostgresTicketService>();
+            var logger = sp.GetRequiredService<ILogger<ReadRetrieveReadChatService>>();
             if (useVision)
             {
                 var azureComputerVisionServiceEndpoint = config["AzureComputerVisionServiceEndpoint"];
                 ArgumentNullException.ThrowIfNullOrEmpty(azureComputerVisionServiceEndpoint);
                 var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
-                
+
                 var visionService = new AzureComputerVisionService(httpClient, azureComputerVisionServiceEndpoint, s_azureCredential);
-                return new ReadRetrieveReadChatService(searchClient, openAIClient, config, visionService, s_azureCredential);
+                return new ReadRetrieveReadChatService(logger, searchClient, openAIClient, config, postgreClient, visionService, s_azureCredential);
             }
             else
             {
-                return new ReadRetrieveReadChatService(searchClient, openAIClient, config, tokenCredential: s_azureCredential);
+                return new ReadRetrieveReadChatService(logger, searchClient, openAIClient, config, postgreClient, tokenCredential: s_azureCredential);
             }
         });
 
