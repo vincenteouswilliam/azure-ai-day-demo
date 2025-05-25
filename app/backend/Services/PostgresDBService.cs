@@ -2,16 +2,16 @@ using NpgsqlTypes;
 
 namespace MinimalApi.Services;
 
-public class PostgresTicketService
+public class PostgresDBService
 {
     private readonly string _connectionString;
 
-    public PostgresTicketService(IConfiguration config)
+    public PostgresDBService(IConfiguration config)
     {
         _connectionString = config["AZURE_POSTGRESQL_CONNECTION_STRING"] ?? throw new ArgumentNullException("AZURE_POSTGRESQL_CONNECTION_STRING");
     }
 
-    public async Task<List<Dictionary<string, object>>> QueryTicketAsync(string sqlQuery, List<Dictionary<string, object>>? parameters)
+    public async Task<List<Dictionary<string, object>>> QueryDataAsync(string sqlQuery, List<Dictionary<string, object>>? parameters)
     {
         var results = new List<Dictionary<string, object>>();
 
@@ -55,7 +55,8 @@ public class PostgresTicketService
                 var row = new Dictionary<string, object>();
                 for (int i = 0; i < reader.FieldCount; i++)
                 {
-                    row[reader.GetName(i)] = reader.GetValue(i);
+                    var value = reader.GetValue(i);
+                    row[reader.GetName(i)] = value == DBNull.Value ? "empty" : value;
                 }
                 results.Add(row);
             }
@@ -78,7 +79,8 @@ public class PostgresTicketService
             "TEXT" => NpgsqlDbType.Text,
             "INTEGER" => NpgsqlDbType.Integer,
             "FLOAT" => NpgsqlDbType.Double,
-            "TIMESTAMP" => NpgsqlDbType.Timestamp,
+            "TIMESTAMP" => NpgsqlDbType.TimestampTz,
+            "NUMERIC" => NpgsqlDbType.Numeric,
             _ => NpgsqlDbType.Unknown
         };
     }
@@ -99,7 +101,8 @@ public class PostgresTicketService
                 NpgsqlDbType.Varchar or NpgsqlDbType.Text => je.ValueKind == JsonValueKind.String ? je.GetString() : null,
                 NpgsqlDbType.Integer => je.ValueKind == JsonValueKind.Number && je.TryGetInt32(out var intValue) ? intValue : null,
                 NpgsqlDbType.Double => je.ValueKind == JsonValueKind.Number && je.TryGetDouble(out var doubleValue) ? doubleValue : null,
-                NpgsqlDbType.Timestamp => je.ValueKind == JsonValueKind.String && je.TryGetDateTime(out var dateTime) ? dateTime : null,
+                NpgsqlDbType.TimestampTz => je.ValueKind == JsonValueKind.String && je.TryGetDateTime(out var dateTime) ? dateTime : null,
+                NpgsqlDbType.Numeric => je.ValueKind == JsonValueKind.Number && je.TryGetDecimal(out var decimalValue) ? decimalValue : null,
                 _ => je.ToString()
             };
         }
