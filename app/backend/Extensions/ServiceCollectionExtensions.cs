@@ -78,11 +78,11 @@ internal static class ServiceCollectionExtensions
         services.AddSingleton<AzureBlobStorageService>();
 
         // Add service for PostgreSQL
-        services.AddSingleton<PostgresTicketService>(sp =>
+        services.AddSingleton<PostgresDBService>(sp =>
         {
             var config = sp.GetRequiredService<IConfiguration>();
 
-            return new PostgresTicketService(config);
+            return new PostgresDBService(config);
         });
 
         services.AddSingleton<ReadRetrieveReadChatService>(sp =>
@@ -91,8 +91,7 @@ internal static class ServiceCollectionExtensions
             var useVision = config["UseVision"] == "true";
             var openAIClient = sp.GetRequiredService<OpenAIClient>();
             var searchClient = sp.GetRequiredService<ISearchService>();
-            var postgreClient = sp.GetRequiredService<PostgresTicketService>();
-            var logger = sp.GetRequiredService<ILogger<ReadRetrieveReadChatService>>();
+            var postgreClient = sp.GetRequiredService<PostgresDBService>();
             if (useVision)
             {
                 var azureComputerVisionServiceEndpoint = config["AzureComputerVisionServiceEndpoint"];
@@ -100,11 +99,11 @@ internal static class ServiceCollectionExtensions
                 var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
 
                 var visionService = new AzureComputerVisionService(httpClient, azureComputerVisionServiceEndpoint, s_azureCredential);
-                return new ReadRetrieveReadChatService(logger, searchClient, openAIClient, config, postgreClient, visionService, s_azureCredential);
+                return new ReadRetrieveReadChatService(searchClient, openAIClient, config, postgreClient, visionService, s_azureCredential);
             }
             else
             {
-                return new ReadRetrieveReadChatService(logger, searchClient, openAIClient, config, postgreClient, tokenCredential: s_azureCredential);
+                return new ReadRetrieveReadChatService(searchClient, openAIClient, config, postgreClient, tokenCredential: s_azureCredential);
             }
         });
 
