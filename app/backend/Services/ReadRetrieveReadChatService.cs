@@ -497,8 +497,7 @@ e.g.
             Index: 0,
             Message: responseMessage,
             Context: responseContext,
-            CitationBaseUrl: _configuration.ToCitationBaseUrl(),
-            Mode: queryMode);
+            CitationBaseUrl: _configuration.ToCitationBaseUrl());
 
         Console.WriteLine($"responseMessage: {responseMessage.Content}");
 
