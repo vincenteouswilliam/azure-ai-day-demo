@@ -50,11 +50,20 @@ if [ -z "$AZD_PREPDOCS_RAN" ] || [ "$AZD_PREPDOCS_RAN" = "false" ]; then
     # PostgreSQL preparation
     echo "Preparing SQL statements for PostgreSQL"
     SQL_FILE=$(echo `pwd`/scripts/postgre-ddl.txt)
+
+    # New table preparation
+    CSV_DBDATA=$(echo `pwd`/scripts/dbdata)
     echo "SQL commands prepared."
 
     # Execute SQL commands with psql
     echo "Executing SQL commands with psql"
     psql "${AZURE_POSTGRESQL_LOCAL_CONN_STRING}" -f "${SQL_FILE}"
+
+    # New table execution
+    psql "${AZURE_POSTGRESQL_LOCAL_CONN_STRING}" -c "\copy Clients FROM '$CSV_DBDATA/Clients.csv' DELIMITER ',' CSV HEADER;"
+    psql "${AZURE_POSTGRESQL_LOCAL_CONN_STRING}" -c "\copy Invoices FROM '$CSV_DBDATA/Invoices.csv' DELIMITER ',' CSV HEADER;"
+    psql "${AZURE_POSTGRESQL_LOCAL_CONN_STRING}" -c "\copy Payments FROM '$CSV_DBDATA/Payments.csv' DELIMITER ',' CSV HEADER;"
+    psql "${AZURE_POSTGRESQL_LOCAL_CONN_STRING}" -c "\copy InvoiceItems (ItemID, InvoiceID, Description, Quantity, UnitPrice) FROM '$CSV_DBDATA/InvoiceItems.csv' DELIMITER ',' CSV HEADER;"
 
     # Check if the command was successful
     if [ $? -eq 0 ]; then
