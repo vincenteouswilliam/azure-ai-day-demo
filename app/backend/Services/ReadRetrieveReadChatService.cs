@@ -1,5 +1,6 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
+using System.Text;
 using Azure.Core;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
@@ -15,15 +16,13 @@ public class ReadRetrieveReadChatService
     private readonly IConfiguration _configuration;
     private readonly IComputerVisionService? _visionService;
     private readonly TokenCredential? _tokenCredential;
-    private readonly PostgresTicketService _ticketService;
-    private readonly ILogger<ReadRetrieveReadChatService> _logger;
+    private readonly PostgresDBService _dbService;
 
     public ReadRetrieveReadChatService(
-        ILogger<ReadRetrieveReadChatService> logger,
         ISearchService searchClient,
         OpenAIClient client,
         IConfiguration configuration,
-        PostgresTicketService ticketService,
+        PostgresDBService dbService,
         IComputerVisionService? visionService = null,
         TokenCredential? tokenCredential = null)
     {
@@ -58,8 +57,7 @@ public class ReadRetrieveReadChatService
         _configuration = configuration;
         _visionService = visionService;
         _tokenCredential = tokenCredential;
-        _ticketService = ticketService;
-        _logger = logger;
+        _dbService = dbService;
     }
 
     public async Task<ChatAppResponse> ReplyAsync(
@@ -79,7 +77,7 @@ public class ReadRetrieveReadChatService
         float[]? embeddings = null;
         var question = history.LastOrDefault(m => m.IsUser)?.Content is { } userQuestion
             ? userQuestion
-            : throw new InvalidOperationException("Use question is null");
+            : throw new InvalidOperationException("User question is null");
 
         string[]? followUpQuestionList = null;
         string? content = string.Empty;
@@ -91,7 +89,7 @@ public class ReadRetrieveReadChatService
         // put together related docs and conversation history to generate answer
         var answerChat = new ChatHistory(
             queryMode == QueryMode.Database
-                ? "You are a system assistant who helps with customer support ticket queries. Be brief and precise in your answers."
+                ? "You are a system assistant who helps with accounts receivable queries. Be brief and precise in your answers."
                 : "You are a system assistant who helps the company employees with their questions. Be brief in your answers"
         );
 
@@ -112,67 +110,115 @@ public class ReadRetrieveReadChatService
         if (queryMode == QueryMode.Database)
         {
             // Step 1: Generate SQL Query using semantic kernel
-            var sqlQueryChat = new ChatHistory($@"You are a helpful AI assistant that generates SQL queries for a PostgreSQL database.
-The table 'customer_support_tickets' has the following schema:
-- ticket_id (INTEGER, PRIMARY KEY) NOT NULL
-- customer_name (VARCHAR(255)) NOT NULL
-- customer_email (VARCHAR(255)) NOT NULL
-- customer_age (INTEGER) NOT NULL
-- customer_gender (VARCHAR(50)) NOT NULL
-- product_purchased (VARCHAR(255)) NOT NULL
-- date_of_purchase (DATE) NOT NULL
-- ticket_type (VARCHAR(100)) NOT NULL
-- ticket_subject (VARCHAR(255)) NOT NULL
-- ticket_description (TEXT) NOT NULL
-- ticket_status (VARCHAR(50)) NOT NULL
-- resolution (TEXT)
-- ticket_priority (VARCHAR(50)) NOT NULL
-- ticket_channel (VARCHAR(50)) NOT NULL
-- first_response_time (TIMESTAMP)
-- time_to_resolution (TIMESTAMP)
-- customer_satisfaction_rating (FLOAT)
+            var sqlQueryChat = new ChatHistory($@"You are an expert AI assistant that generates SQL queries for a PostgreSQL database. Your task is to interpret user prompts and generate accurate, efficient, and secure parameterized SQL queries for the accounts receivable database, which includes the following tables and schemas:
 
-Generate a parameterized SQL query based on the user's prompt. Return a JSON object with:
-- 'query': The SQL query with placeholders (e.g., @p1, @p2).
-- 'parameters': A list of dictionary of parameter names and their values. For date/time-related value, construct the value in 'yyyy-MM-dd' format for date only and 'yyyy-MM-dd HH:mm:ss' format for datetime. Add a parameter named 'type' whose value corresponds with column data type (e.g., if @p1 is a placeholder for 'ticket_priority' column, 'type' parameter value should be 'VARCHAR')
-Ensure the query is safe, uses ILIKE for text searches, and limits to {dbTop} results. For nullable columns, use IS NULL or IS NOT NULL to check whether a value exists or not. For date/time columns, use BETWEEN or = as appropriate.
-Example output:
-{{
-    ""query"": ""SELECT * FROM customer_support_tickets WHERE ticket_subject ILIKE @p1 AND ticket_status = @p2 LIMIT {dbTop}"",
-    ""parameters"": [{{ ""p1"": ""%issue%"", ""type"": ""VARCHAR"" }}, {{ ""p2"": ""Open"", ""type"": ""VARCHAR"" }}]
-}}
-{{
-    ""query"": ""SELECT COUNT(*) AS ticket_count FROM customer_support_tickets WHERE ticket_status = @p1"",
-    ""parameters"": [{{ ""p1"": ""Pending Customer Response"", ""type"": ""VARCHAR"" }}]
-}}
-{{
-    ""query"": ""SELECT ticket_status, COUNT(*) AS Recurrence FROM customer_support_tickets GROUP BY ticket_status"",
-    ""parameters"": {{}}
-}}
-{{
-    ""query"": ""SELECT ticket_status, COUNT(*) AS Recurrence FROM customer_support_tickets WHERE ticket_type = @p1 GROUP BY ticket_status"",
-    ""parameters"": [{{ ""p1"": ""Refund request"", ""type"": ""VARCHAR"" }}]
-}}
-{{
-    ""query"": ""SELECT * FROM customer_support_tickets WHERE resolution IS NOT NULL LIMIT {dbTop}"",
-    ""parameters"": {{}}
-}}
-{{
-    ""query"": ""SELECT * FROM customer_support_tickets WHERE first_response_time BETWEEN @p1 AND @p2"",
-    ""parameters"": [{{ ""p1"": ""2024-05-01 00:00:00"", ""type"": ""TIMESTAMP"" }}, {{ ""p2"": ""2024-05-01 23:59:59"", ""type"": ""TIMESTAMP"" }}]
-}}");
+1. Clients:
+   - ClientID (INTEGER, PRIMARY KEY, SERIAL) NOT NULL
+   - ClientName (VARCHAR(100)) NOT NULL
+   - ContactPerson (VARCHAR(100))
+   - Email (VARCHAR(100))
+   - Phone (VARCHAR(20))
+   - Address (TEXT)
+   - CreatedAt (TIMESTAMP WITH TIME ZONE) DEFAULT CURRENT_TIMESTAMP
+
+2. Invoices:
+   - InvoiceID (INTEGER, PRIMARY KEY, SERIAL) NOT NULL
+   - ClientID (INTEGER, FOREIGN KEY REFERENCES Clients(ClientID)) NOT NULL
+   - InvoiceNumber (VARCHAR(50), UNIQUE) NOT NULL
+   - IssueDate (DATE) NOT NULL
+   - DueDate (DATE) NOT NULL
+   - TotalAmount (NUMERIC(15, 2)) NOT NULL
+   - AmountPaid (NUMERIC(15, 2)) DEFAULT 0.00
+   - Status (VARCHAR(20)) NOT NULL DEFAULT 'Open' CHECK (Status IN ('Open', 'Partially Paid', 'Paid', 'Overdue'))
+   - CreatedAt (TIMESTAMP WITH TIME ZONE) DEFAULT CURRENT_TIMESTAMP
+
+3. Payments:
+   - PaymentID (INTEGER, PRIMARY KEY, SERIAL) NOT NULL
+   - InvoiceID (INTEGER, FOREIGN KEY REFERENCES Invoices(InvoiceID)) NOT NULL
+   - ClientID (INTEGER, FOREIGN KEY REFERENCES Clients(ClientID)) NOT NULL
+   - PaymentDate (DATE) NOT NULL
+   - Amount (NUMERIC(15, 2)) NOT NULL
+   - PaymentMethod (VARCHAR(20)) NOT NULL CHECK (PaymentMethod IN ('Bank Transfer', 'Credit Card', 'Cash', 'Check', 'Other'))
+   - ReferenceNumber (VARCHAR(50))
+   - Notes (TEXT)
+   - CreatedAt (TIMESTAMP WITH TIME ZONE) DEFAULT CURRENT_TIMESTAMP
+
+4. InvoiceItems:
+   - ItemID (INTEGER, PRIMARY KEY, SERIAL) NOT NULL
+   - InvoiceID (INTEGER, FOREIGN KEY REFERENCES Invoices(InvoiceID)) NOT NULL
+   - Description (VARCHAR(255)) NOT NULL
+   - Quantity (INTEGER) NOT NULL
+   - UnitPrice (NUMERIC(15, 2)) NOT NULL
+   - TotalPrice (NUMERIC(15, 2), GENERATED ALWAYS AS (Quantity * UnitPrice)) STORED
+
+Guidelines:
+1. Query Generation:
+   - Generate parameterized SQL queries using placeholders (e.g., @p1, @p2) compatible with C# and PostgreSQL.
+   - Use ILIKE for text-based searches on columns like ClientName, ContactPerson, Email, Address (Clients), InvoiceNumber, Status (Invoices), ReferenceNumber, Notes (Payments), and Description (InvoiceItems).
+   - For nullable columns (ContactPerson, Email, Phone, Address, ReferenceNumber, Notes), use IS NULL or IS NOT NULL to check for existence when appropriate.
+   - For date/time columns (IssueDate, DueDate, PaymentDate, CreatedAt), use BETWEEN or = as appropriate, formatting parameter values as 'yyyy-MM-dd' for DATE and 'yyyy-MM-dd HH:mm:ss' for TIMESTAMP WITH TIME ZONE.
+   - For numeric columns (TotalAmount, AmountPaid, Amount, Quantity, UnitPrice), use >=, <=, =, or BETWEEN for comparisons.
+   - Include joins when necessary to combine data across tables (e.g., Clients with Invoices, Invoices with Payments or InvoiceItems).
+   - Limit results to {dbTop} unless the user specifies otherwise.
+   - Ensure queries are syntactically correct, optimized for performance (e.g., use indexes, avoid unnecessary joins or subqueries), and safe from SQL injection.
+
+2. Column Mapping:
+   - Map user-provided terms to the appropriate columns:
+     - Client-related terms (e.g., ""Acme Corp"", ""John Doe"") should search ClientName or ContactPerson using ILIKE.
+     - Invoice-related terms (e.g., ""INV-0001"", ""overdue"", ""unpaid"") should search InvoiceNumber (exact or ILIKE) or Status (exact match for 'Open', 'Partially Paid', 'Paid', 'Overdue').
+     - Payment-related terms (e.g., ""bank transfer"", ""PAY-1234"") should search PaymentMethod (exact match) or ReferenceNumber (ILIKE).
+     - Item-related terms (e.g., ""Consulting Services"", ""Software License"") should search Description in InvoiceItems using ILIKE.
+     - Amount-related terms (e.g., ""amount over 5000"", ""unpaid balance"") should query TotalAmount, AmountPaid, or Amount, or calculate outstanding balance (TotalAmount - AmountPaid).
+     - Date-related terms (e.g., ""invoices due in May 2025"", ""payments in 2024"") should query IssueDate, DueDate, or PaymentDate using BETWEEN or =.
+   - For financial queries (e.g., ""outstanding invoices"", ""unpaid clients""), calculate outstanding amounts as (TotalAmount - AmountPaid) and filter by Status ('Open', 'Partially Paid', 'Overdue').
+   - If the user specifies a client, invoice, or payment status, prioritize exact matches on ClientID, InvoiceID, or Status where applicable.
+
+3. Ambiguity Handling:
+   - If the prompt is ambiguous (e.g., unclear which table or column a term applies to), prioritize searching ClientName and InvoiceNumber for identifiers, and Notes or Description for detailed terms, combining with other relevant columns (e.g., Status for payment status).
+   - If the prompt implies multiple conditions (e.g., client name and overdue status), combine them with AND/OR logically based on the request.
+   - For aggregations (e.g., ""total unpaid amount"", ""count of overdue invoices""), use GROUP BY and aggregate functions like SUM or COUNT, joining tables as needed.
+
+4. Output Format:
+   - Return a JSON object with:
+     - 'query': The SQL query with placeholders.
+     - 'parameters': A list of dictionaries containing parameter names (e.g., p1), values, and their data type based on table schema (e.g., VARCHAR, INTEGER, DATE, TIMESTAMP, NUMERIC).
+     - Format date values as 'yyyy-MM-dd' and datetime values as 'yyyy-MM-dd HH:mm:ss'.
+   - If no parameters are needed (e.g., for aggregations or IS NULL checks), return an empty parameters list (a simple {{}}).
+
+Example Prompts and Outputs:
+- Prompt: ""Show me top 5 overdue invoices""
+  Output:
+  {{
+        ""query"": ""SELECT i.InvoiceNumber, c.ClientName, i.DueDate, i.TotalAmount, i.AmountPaid, (i.TotalAmount - i.AmountPaid) AS OutstandingAmount FROM Invoices i JOIN Clients c ON i.ClientID = c.ClientID WHERE i.Status = @p1 LIMIT 5"",
+        ""parameters"": [{{""p1"": ""Overdue"", ""type"": ""VARCHAR""}}]
+  }}
+- Prompt: ""What is the outstanding balance for Acme Corp?""
+  Output:
+  {{
+        ""query"": ""SELECT i.InvoiceNumber, i.DueDate, i.TotalAmount, i.AmountPaid, (i.TotalAmount - i.AmountPaid) AS OutstandingAmount FROM Invoices i JOIN Clients c ON i.ClientID = c.ClientID WHERE c.ClientName ILIKE @p1 AND i.Status IN ('Open', 'Partially Paid', 'Overdue') LIMIT {dbTop}"",
+        ""parameters"": [{{""p1"": ""%Acme Corp%"", ""type"": ""VARCHAR""}}]
+  }}
+- Prompt: ""Count payments by payment method for invoices issued in 2024""
+  Output:
+  {{
+        ""query"": ""SELECT p.PaymentMethod, COUNT(*) AS PaymentCount FROM Payments p JOIN Invoices i ON p.InvoiceID = i.InvoiceID WHERE i.IssueDate BETWEEN @p1 AND @p2 GROUP BY p.PaymentMethod"",
+        ""parameters"": [{{""p1"": ""2024-01-01"", ""type"": ""DATE""}}, {{""p2"": ""2024-12-31"", ""type"": ""DATE""}}]
+  }}
+- Prompt: ""List invoices for Consulting Services""
+  Output:
+  {{
+        ""query"": ""SELECT i.InvoiceNumber, c.ClientName, ii.Description, ii.Quantity, ii.UnitPrice, ii.TotalPrice FROM Invoices i JOIN Clients c ON i.ClientID = c.ClientID JOIN InvoiceItems ii ON i.InvoiceID = ii.InvoiceID WHERE ii.Description ILIKE @p1 LIMIT {dbTop}"",
+        ""parameters"": [{{""p1"": ""%Consulting Services%"", ""type"": ""VARCHAR""}}]
+  }}");
             sqlQueryChat.AddUserMessage(question);
             var sqlResult = await chat.GetChatMessageContentAsync(sqlQueryChat, cancellationToken: cancellationToken);
             var sqlJson = sqlResult.Content ?? throw new InvalidOperationException("Failed to generate SQL query");
-
-            // Logging value
-            _logger.LogInformation("sqlResult: {@SqlResult}", sqlResult);
-            _logger.LogInformation("sqljson: {@SqlJson}", sqlJson);
+            Console.WriteLine($"sqlJson: {sqlJson}");
 
             var sqlObject = JsonSerializer.Deserialize<JsonElement>(sqlJson);
             var sqlQuery = sqlObject.GetProperty("query").GetString() ?? throw new InvalidOperationException("Failed to get SQL query");
             var parametersJson = sqlObject.GetProperty("parameters");
-            bool isEmptyParameters = parametersJson.ValueKind == JsonValueKind.Array && parametersJson.GetArrayLength() == 0;
+            bool isEmptyParameters = (parametersJson.ValueKind == JsonValueKind.Array && parametersJson.GetArrayLength() == 0) || (parametersJson.ValueKind == JsonValueKind.Object && !parametersJson.EnumerateObject().Any());
             List<Dictionary<string, object>>? parameters = null;
             if (!isEmptyParameters) // Only deserialize if parametersJson is not an empty JSON object
             {
@@ -181,35 +227,35 @@ Example output:
 
             // Step 2: Validate SQL Query with basic security check
             // Check for incorrect table name or no SELECT statement
-            if (!sqlQuery.Contains("customer_support_tickets") || !sqlQuery.Contains("SELECT", StringComparison.CurrentCultureIgnoreCase))
+            if (!sqlQuery.Contains("SELECT", StringComparison.CurrentCultureIgnoreCase))
             {
                 throw new InvalidOperationException("Generated SQL query is invalid or unsafe");
             }
-            // Check for limit in SELECT statement
-            if (sqlQuery.Contains("SELECT", StringComparison.CurrentCultureIgnoreCase) && !sqlQuery.Contains("LIMIT", StringComparison.CurrentCultureIgnoreCase))
+            // Select only without count aggregate function and no limit clause is prohibited
+            if (sqlQuery.Contains("SELECT", StringComparison.CurrentCultureIgnoreCase) && !sqlQuery.Contains("COUNT", StringComparison.CurrentCultureIgnoreCase) && !sqlQuery.Contains("LIMIT", StringComparison.CurrentCultureIgnoreCase))
             {
                 throw new InvalidOperationException($"Row selection query must include LIMIT {dbTop}");
             }
 
-            // Step 3: Query the database using PostgresTicketService
-            var ticketResults = await _ticketService.QueryTicketAsync(sqlQuery, parameters);
+            // Step 3: Query the database using PostgresDBService
+            var dbResults = await _dbService.QueryDataAsync(sqlQuery, parameters);
 
             // Step 4: Format the database results
-            if (ticketResults.Count == 0)
+            if (dbResults.Count == 0)
             {
-                content = "No customer support tickets found.";
+                content = "No accounts receivable data found.";
             }
             else
             {
                 if (sqlQuery.Contains("COUNT(*)", StringComparison.CurrentCultureIgnoreCase) && !sqlQuery.Contains("GROUP BY", StringComparison.CurrentCultureIgnoreCase)) // Aggregate function count all only, no group by clause
                 {
-                    var row = ticketResults[0];
+                    var row = dbResults[0];
                     var count = row.Values.FirstOrDefault()?.ToString() ?? "0";
                     content = $"Count: {count}";
                 }
                 else if (sqlQuery.Contains("COUNT", StringComparison.CurrentCultureIgnoreCase) && sqlQuery.Contains("GROUP BY", StringComparison.CurrentCultureIgnoreCase)) // Aggregate function count all with group by clause
                 {
-                    content = string.Join("\r", ticketResults.Select(row =>
+                    content = string.Join("\r", dbResults.Select(row =>
                     {
                         var countDetails = string.Join(", ", row.Select(kv => $"{kv.Key}: {kv.Value}"));
                         return $"Count: {countDetails}";
@@ -217,10 +263,10 @@ Example output:
                 }
                 else // Regular select combined with some aggregates
                 {
-                    content = string.Join("\r", ticketResults.Select(row =>
+                    content = string.Join("\r", dbResults.Select(row =>
                     {
-                        var ticketDetails = string.Join(", ", row.Select(kv => $"{kv.Key}: {kv.Value}"));
-                        return $"Ticket: {ticketDetails}";
+                        var details = string.Join(", ", row.Select(kv => $"{kv.Key}: {kv.Value}"));
+                        return $"Record: {details}";
                     }));
                 }
             }
@@ -230,11 +276,12 @@ Example output:
 {content}
 ## End ##
 
-Answer the question based on the available source.
+Answer the question based on the source availability and/or key-value combinations.
 Your answer needs to be a JSON object with the following format:
 {{
-    ""answer"": // The answer to the question. For database queries, summarize ticket details. For document queries, include source references [title]. If no source, answer as 'I don't know'.
-    ""thoughts"": // Brief thoughts on how you came up with the answer, e.g., what sources or tickets you used.
+    ""introduction"": // Provide an introductory statement for the answer based on user's prompt (e.g., if user's prompt is 'Show top 5 overdue invoices', your introductory statement should be 'Here are the top 5 overdue invoices:'). If the source is not available or there is only 1 key-value combination in the source and the value is 'empty', return an empty string ("""").
+    ""answer"": // The answer to the question. If the source contains one or more records with multiple key-value pairs (e.g., 'Record: InvoiceNumber: INV-0001, ClientName: Acme Corp'), return a list of dictionaries where each dictionary represents a record with its key-value pairs (e.g., [{{""InvoiceNumber"": ""INV-0001"", ""ClientName"": ""Acme Corp""}}, ...]). If the source has a single key-value pair with the value 'empty' (e.g., 'Record: Notes: empty'), return a brief explanation string based on the key and user prompt (e.g., 'No notes have been provided for this payment'). If the source is not available (e.g., 'No accounts receivable data found'), return 'My apologies, I can''t find the information you requested'.
+    ""thoughts"": // Brief thoughts on how you came up with the answer, e.g., what tables or columns you used.
 }}";
             answerChat.AddUserMessage(prompt);
         }
@@ -312,8 +359,8 @@ Don't put your answer between ```json and ```, return the json string directly. 
 Answer the question based on the available source.
 Your answer needs to be a JSON object with the following format:
 {{
-    ""answer"": // The answer to the question. For database queries, summarize ticket details. For document queries, include source references [title]. If no source, answer as 'I don't know'.
-    ""thoughts"": // Brief thoughts on how you came up with the answer, e.g., what sources or tickets you used.
+    ""answer"": // The answer to the question. For database queries, summarize record details. For document queries, include source references [title]. If no source, answer as 'I don't know'.
+    ""thoughts"": // Brief thoughts on how you came up with the answer, e.g., what sources or data you used.
 }}";
                 answerChat.AddUserMessage(prompt);
             }
@@ -332,38 +379,58 @@ Your answer needs to be a JSON object with the following format:
                        promptExecutingSetting,
                        cancellationToken: cancellationToken);
         var answerJson = answer.Content ?? throw new InvalidOperationException("Failed to get search query");
+        Console.WriteLine($"answerJson: {answerJson}");
         var answerObject = JsonSerializer.Deserialize<JsonElement>(answerJson);
         var answerProperty = answerObject.GetProperty("answer");
         string ans;
 
         // Check for answer property variation
+        // if (answerProperty.ValueKind == JsonValueKind.Array) // Answer is in array mode
+        // {
+        //     var records = answerProperty.EnumerateArray().Select(record =>
+        //         string.Join(", ", record.EnumerateObject().Select(kv => $"{kv.Name}: {kv.Value}"))
+        //     );
+        //     ans = string.Join(", ", records);
+        // }
+        // else if (answerProperty.ValueKind == JsonValueKind.Object) // Answer is in object mode
+        // {
+        //     var details = answerProperty.EnumerateObject()
+        //         .Select(kv => $"{kv.Name}: {kv.Value}")
+        //         .ToArray();
+        //     ans = string.Join(", ", details);
+        // }
         if (answerProperty.ValueKind == JsonValueKind.Array) // Answer is in array mode
         {
-            var tickets = answerProperty.EnumerateArray().Select(ticket =>
-                string.Join(", ", ticket.EnumerateObject().Select(kv => $"{kv.Name}: {kv.Value}"))
-            );
-            ans = string.Join(", ", tickets);
+            ans = ConstructHtmlTable(answerProperty);
         }
-        else // Answer is a regular string
+        else // Answer is a regular value
         {
-            ans = answerProperty.GetString() ?? throw new InvalidOperationException("Failed to get answer");
+            if (answerProperty.ValueKind == JsonValueKind.Number) // Answer is an integer or double
+            {
+                ans = answerProperty.TryGetInt32(out var ansInt) ? ansInt.ToString() : answerProperty.TryGetDouble(out var ansDouble) ? ansDouble.ToString() : throw new InvalidOperationException("Failed to get answer");
+            }
+            else // Answer is a regular string
+            {
+                ans = answerProperty.GetString() ?? throw new InvalidOperationException("Failed to get answer");
+            }
         }
         var thoughts = answerObject.GetProperty("thoughts").GetString() ?? throw new InvalidOperationException("Failed to get thoughts");
+        var introduction = queryMode == QueryMode.Database ? answerObject.GetProperty("introduction").GetString() : null;
 
         // step 7
         // add follow up questions if requested
         if (overrides?.SuggestFollowupQuestions is true)
         {
             var followUpQuestionChat = new ChatHistory(queryMode == QueryMode.Database
-                ? @"You are a helpful AI assistant specializing in customer support ticket queries."
+                ? @"You are a helpful AI assistant specializing in accounts receivable queries."
                 : @"You are a helpful AI assistant");
 
             // Set follow up questions based on query mode
             string followUpPrompt;
             if (queryMode == QueryMode.Database)
             {
-                followUpPrompt = $@"Generate three follow-up questions based on the answer you just generated about customer support tickets.
-The questions should be relevant to the ticket context (e.g., ticket status, priority, customer details, product purchased, or resolution). Don't put your answer between ```json and ```, return the json string directly.
+                followUpPrompt = $@"Generate three follow-up questions based on the answer you just generated about accounts receivable data.
+The questions should be relevant to the financial context (e.g., invoice status, client details, payment methods, or outstanding balances). Don't put your answer between ```json and ```, return the json string directly.
 # Answer
 {ans}
 
@@ -371,9 +438,9 @@ The questions should be relevant to the ticket context (e.g., ticket status, pri
 Return the follow-up questions as a JSON string list.
 e.g.
 [
-    ""What is the current status of the ticket?"",
-    ""Can you provide more details about the resolution?"",
-    ""How many tickets are open for this product?""
+    ""What is the status of the invoice?"",
+    ""Can you provide details about the payment history?"",
+    ""Which clients have overdue invoices?""
 ]";
             }
             else // QueryMode.Document
@@ -409,6 +476,12 @@ e.g.
             followUpQuestionList = followUpQuestionsList.ToArray();
         }
 
+        // Add introduction message before the answer if introduction message exists
+        if (!string.IsNullOrEmpty(introduction))
+        {
+            ans = $"{introduction}<br>\n" + ans;
+        }
+
         var responseMessage = new ResponseMessage("assistant", ans);
         var responseContext = new ResponseContext(
             DataPointsContent: queryMode == QueryMode.Database
@@ -424,8 +497,46 @@ e.g.
             Index: 0,
             Message: responseMessage,
             Context: responseContext,
-            CitationBaseUrl: _configuration.ToCitationBaseUrl());
+            CitationBaseUrl: _configuration.ToCitationBaseUrl(),
+            Mode: queryMode);
+
+        Console.WriteLine($"responseMessage: {responseMessage.Content}");
 
         return new ChatAppResponse(new[] { choice });
+    }
+
+    // Helper method to construct html table strings
+    private static string ConstructHtmlTable(JsonElement je)
+    {
+        // Starts with a single <table> opener
+        string tableString = "<table class=\"answer-table\">";
+
+        // Table header
+        JsonElement firstEntry = je.EnumerateArray().FirstOrDefault();
+        var keys = firstEntry.EnumerateObject().Select(prop => prop.Name);
+        string headers = "<tr>" + string.Join("", keys.Select(key => $"<th>{key}</th>")) + "</tr>";
+        tableString += headers;
+
+        // Table Data
+        StringBuilder dataRows = new StringBuilder();
+        foreach (var data in je.EnumerateArray())
+        {
+            dataRows.Append("<tr>");
+            foreach (var key in keys)
+            {
+                string value = data.TryGetProperty(key, out JsonElement val)
+                    ? val.ToString()
+                    : "";
+                dataRows.Append($"<td>{value}</td>");
+            }
+            dataRows.Append("</tr>");
+        }
+        tableString += dataRows.ToString();
+
+        // Close with </table> to complete the string
+        tableString += "</table>";
+
+        // Return the constructed table string
+        return tableString;
     }
 }
