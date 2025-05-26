@@ -10,7 +10,7 @@ internal static class WebApplicationExtensions
     {
         var api = app.MapGroup("api");
 
-        // Blazor 📎 Clippy streaming endpoint
+        // NTT DATA bot streaming endpoint
         api.MapPost("openai/chat", OnPostChatPromptAsync);
 
         // Long-form chat w/ contextual history endpoint
@@ -27,6 +27,9 @@ internal static class WebApplicationExtensions
 
         // Connection to Postgresql DB
         api.MapGet("db", OnGetDataFromDBAsync);
+
+        // Mail connection
+        api.MapGet("mail", OnGetEmailNotificationAsync);
 
         api.MapGet("enableLogout", OnGetEnableLogout);
 
@@ -56,12 +59,12 @@ internal static class WebApplicationExtensions
                 {
                     new ChatRequestSystemMessage("""
                         You're an AI assistant for developers, helping them write code more efficiently.
-                        You're name is **Blazor 📎 Clippy** and you're an expert Blazor developer.
+                        You're name is **NTT DATA bot** and you're an expert Blazor developer.
                         You're also an expert in ASP.NET Core, C#, TypeScript, and even JavaScript.
                         You will always reply with a Markdown formatted response.
                         """),
                     new ChatRequestUserMessage("What's your name?"),
-                    new ChatRequestAssistantMessage("Hi, my name is **Blazor 📎 Clippy**! Nice to meet you."),
+                    new ChatRequestAssistantMessage("Hi, my name is **NTT DATA bot**! Nice to meet you."),
                     new ChatRequestUserMessage(prompt.Prompt)
                 }
             }, cancellationToken);
@@ -181,6 +184,53 @@ internal static class WebApplicationExtensions
         catch (Exception ex)
         {
             return Results.Problem($"Error connecting to database: {ex.Message}");
+        }
+    }
+
+    private static async Task<IResult> OnGetEmailNotificationAsync(IConfiguration config)
+    {
+        // Variables
+        var smtpHost = config["GMAIL_SMTP_HOST"];
+        var smtpPort = int.TryParse(config["GMAIL_SMTP_PORT"], out int port) ? port : 587;
+        var senderAddress = config["GMAIL_SENDER_EMAIL_ADDRESS"];
+        var senderPassword = config["GMAIL_SENDER_EMAIL_PASSWORD"];
+        var senderDisplayName = config["GMAIL_SENDER_DISPLAY_NAME"];
+
+        try
+        {
+            string dummyRecipient = "vincenteous.william@global.ntt";
+
+            if (string.IsNullOrWhiteSpace(senderAddress))
+            {
+                return Results.Problem("Sender email address is not configured.");
+            }
+
+            // Set SMTP Client
+            using var smtpClient = new SmtpClient(smtpHost, smtpPort)
+            {
+                EnableSsl = true,
+                Credentials = new NetworkCredential(senderAddress, senderPassword)
+            };
+
+            // Set Mail Message
+            using var mailMessage = new MailMessage
+            {
+                From = new MailAddress(senderAddress, senderDisplayName),
+                Subject = "Test Email from AI App",
+                Body = "This is a test email from AI App for the purpose of checking mail connection",
+                IsBodyHtml = false
+            };
+
+            // Add Recipient
+            mailMessage.To.Add(dummyRecipient);
+
+            // Send the email
+            await smtpClient.SendMailAsync(mailMessage);
+            return Results.Ok("Email connection successful!");
+        }
+        catch (Exception ex)
+        {
+            return Results.Problem($"Failed to send email: {ex.Message}");
         }
     }
 }
