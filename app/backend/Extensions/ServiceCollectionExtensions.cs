@@ -85,6 +85,14 @@ internal static class ServiceCollectionExtensions
             return new PostgresDBService(config);
         });
 
+        // Add service for Email Notification
+        services.AddSingleton<EmailNotificationService>(sp =>
+        {
+            var config = sp.GetRequiredService<IConfiguration>();
+
+            return new EmailNotificationService(config);
+        });
+
         services.AddSingleton<ReadRetrieveReadChatService>(sp =>
         {
             var config = sp.GetRequiredService<IConfiguration>();
@@ -92,6 +100,7 @@ internal static class ServiceCollectionExtensions
             var openAIClient = sp.GetRequiredService<OpenAIClient>();
             var searchClient = sp.GetRequiredService<ISearchService>();
             var postgreClient = sp.GetRequiredService<PostgresDBService>();
+            var emailClient = sp.GetRequiredService<EmailNotificationService>();
             if (useVision)
             {
                 var azureComputerVisionServiceEndpoint = config["AzureComputerVisionServiceEndpoint"];
@@ -99,11 +108,11 @@ internal static class ServiceCollectionExtensions
                 var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
 
                 var visionService = new AzureComputerVisionService(httpClient, azureComputerVisionServiceEndpoint, s_azureCredential);
-                return new ReadRetrieveReadChatService(searchClient, openAIClient, config, postgreClient, visionService, s_azureCredential);
+                return new ReadRetrieveReadChatService(searchClient, openAIClient, config, postgreClient, emailClient, visionService, s_azureCredential);
             }
             else
             {
-                return new ReadRetrieveReadChatService(searchClient, openAIClient, config, postgreClient, tokenCredential: s_azureCredential);
+                return new ReadRetrieveReadChatService(searchClient, openAIClient, config, postgreClient, emailClient, tokenCredential: s_azureCredential);
             }
         });
 
