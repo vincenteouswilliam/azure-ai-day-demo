@@ -68,6 +68,23 @@ param serviceBinds array
 @description('PostgreSQL connection string')
 param postgresConnectionString string
 
+// Gmail related settings
+@description('Gmail SMTP Host')
+param gmailSmtpHost string
+
+@description('Gmail SMTP Port')
+param gmailSmtpPort int
+
+@description('Gmail Sender Email')
+param gmailSenderEmailAddress string
+
+@description('Gmail Sender Password')
+@secure()
+param gmailSenderEmailPassword string
+
+@description('Gmail Sender Display Name')
+param gmailSenderDisplayName string
+
 resource webIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
   name: identityName
   location: location
@@ -155,6 +172,26 @@ module app '../core/host/container-app-upsert.bicep' = {
       {
         name: 'AZURE_POSTGRESQL_CONNECTION_STRING'
         value: postgresConnectionString
+      }
+      {
+        name: 'GMAIL_SMTP_HOST'
+        value: gmailSmtpHost
+      }
+      {
+        name: 'GMAIL_SMTP_PORT'
+        value: gmailSmtpPort
+      }
+      {
+        name: 'GMAIL_SENDER_EMAIL_ADDRESS'
+        value: gmailSenderEmailAddress
+      }
+      {
+        name: 'GMAIL_SENDER_EMAIL_PASSWORD'
+        value: gmailSenderEmailPassword
+      }
+      {
+        name: 'GMAIL_SENDER_DISPLAY_NAME'
+        value: gmailSenderDisplayName
       }
     ]
     targetPort: 8080

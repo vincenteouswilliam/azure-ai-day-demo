@@ -136,6 +136,21 @@
     },
     "postgresVersion": {
       "value": "${AZURE_POSTGRESQL_VERSION=16}"
+    },
+    "gmailSmtpHost": {
+      "value": "${GMAIL_SMTP_HOST=smtp.gmail.com}"
+    },
+    "gmailSmtpPort": {
+      "value": "${GMAIL_SMTP_PORT=587}"
+    },
+    "gmailSenderEmailAddress": {
+      "value": "${GMAIL_SENDER_EMAIL_ADDRESS}"
+    },
+    "gmailSenderEmailPassword": {
+      "value": "${GMAIL_SENDER_EMAIL_PASSWORD}"
+    },
+    "gmailSenderDisplayName": {
+      "value": "${GMAIL_SENDER_DISPLAY_NAME}"
     }
   }
 }
