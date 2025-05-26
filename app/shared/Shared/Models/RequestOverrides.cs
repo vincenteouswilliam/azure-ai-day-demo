@@ -16,7 +16,7 @@ public record RequestOverrides
     public bool SemanticRanker { get; set; } = false;
 
     [JsonPropertyName("query_mode")]
-    public QueryMode QueryMode { get; set; } = QueryMode.Document; // Default to Document, can choose between Database and Document
+    public QueryMode QueryMode { get; set; } = QueryMode.Database; // Default to Document, can choose between Database and Document
 
     [JsonPropertyName("retrieval_mode")]
     public RetrievalMode RetrievalMode { get; set; } = RetrievalMode.Vector; // available option: Text, Vector, Hybrid
