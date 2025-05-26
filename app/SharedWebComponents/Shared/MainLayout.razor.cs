@@ -30,13 +30,13 @@ public sealed partial class MainLayout
 
     private bool SettingsDisabled => new Uri(Nav.Uri).Segments.LastOrDefault() switch
     {
-        "ask" or "chat" => false,
+        "/" or "ask" or "chat" => false,
         _ => true
     };
 
     private bool SortDisabled => new Uri(Nav.Uri).Segments.LastOrDefault() switch
     {
-        "voicechat" or "chat" => false,
+        "/" or "voicechat" or "chat" => false,
         _ => true
     };
 
