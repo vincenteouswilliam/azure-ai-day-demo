@@ -255,7 +255,7 @@ Example Prompts and Outputs:
                 throw new InvalidOperationException("Generated SQL query is invalid or unsafe");
             }
             // Select only without count aggregate function and no limit clause is prohibited
-            if (sqlQuery.Contains("SELECT", StringComparison.CurrentCultureIgnoreCase) && !sqlQuery.Contains("COUNT", StringComparison.CurrentCultureIgnoreCase) && !sqlQuery.Contains("LIMIT", StringComparison.CurrentCultureIgnoreCase))
+            if (sqlQuery.Contains("SELECT", StringComparison.CurrentCultureIgnoreCase) && !sqlQuery.Contains("COUNT", StringComparison.CurrentCultureIgnoreCase) && !sqlQuery.Contains("SUM", StringComparison.CurrentCultureIgnoreCase) && !sqlQuery.Contains("LIMIT", StringComparison.CurrentCultureIgnoreCase))
             {
                 throw new InvalidOperationException($"Row selection query must include LIMIT {dbTop}");
             }
