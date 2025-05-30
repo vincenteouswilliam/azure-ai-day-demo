@@ -190,16 +190,15 @@ internal static class WebApplicationExtensions
     private static async Task<IResult> OnGetEmailNotificationAsync(IConfiguration config)
     {
         // Variables
-        var smtpHost = config["GMAIL_SMTP_HOST"];
-        var smtpPort = int.TryParse(config["GMAIL_SMTP_PORT"], out int port) ? port : 587;
-        var senderAddress = config["GMAIL_SENDER_EMAIL_ADDRESS"];
-        var senderPassword = config["GMAIL_SENDER_EMAIL_PASSWORD"];
-        var senderDisplayName = config["GMAIL_SENDER_DISPLAY_NAME"];
+        var smtpHost = config["MAIL_SMTP_HOST"];
+        var smtpPort = int.TryParse(config["MAIL_SMTP_PORT"], out int port) ? port : 587;
+        var senderAddress = config["MAIL_SENDER_EMAIL_ADDRESS"];
+        var senderPassword = config["MAIL_SENDER_EMAIL_PASSWORD"];
+        var senderDisplayName = config["MAIL_SENDER_DISPLAY_NAME"];
+        var dummyRecipient = config["MAIL_DUMMY_RECIPIENT_ADDRESS"] ?? throw new ArgumentNullException("MAIL_DUMMY_RECIPIENT_ADDRESS");
 
         try
         {
-            string dummyRecipient = "vincenteous.william@global.ntt";
-
             if (string.IsNullOrWhiteSpace(senderAddress))
             {
                 return Results.Problem("Sender email address is not configured.");
@@ -222,6 +221,10 @@ internal static class WebApplicationExtensions
             };
 
             // Add Recipient
+            if (string.IsNullOrEmpty(dummyRecipient))
+            {
+                return Results.Problem("Dummy target recipient is empty");
+            }
             mailMessage.To.Add(dummyRecipient);
 
             // Send the email

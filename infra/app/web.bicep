@@ -68,22 +68,25 @@ param serviceBinds array
 @description('PostgreSQL connection string')
 param postgresConnectionString string
 
-// Gmail related settings
-@description('Gmail SMTP Host')
-param gmailSmtpHost string
+// Mail related settings
+@description('Mail SMTP Host')
+param mailSmtpHost string
 
-@description('Gmail SMTP Port')
-param gmailSmtpPort int
+@description('Mail SMTP Port')
+param mailSmtpPort int
 
-@description('Gmail Sender Email')
-param gmailSenderEmailAddress string
+@description('Mail Sender Email')
+param mailSenderEmailAddress string
 
-@description('Gmail Sender Password')
+@description('Mail Sender Password')
 @secure()
-param gmailSenderEmailPassword string
+param mailSenderEmailPassword string
 
-@description('Gmail Sender Display Name')
-param gmailSenderDisplayName string
+@description('Mail Sender Display Name')
+param mailSenderDisplayName string
+
+@description('Mail dummy recipient address to overwrite')
+param mailDummyRecipientAddress string
 
 resource webIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
   name: identityName
@@ -174,24 +177,28 @@ module app '../core/host/container-app-upsert.bicep' = {
         value: postgresConnectionString
       }
       {
-        name: 'GMAIL_SMTP_HOST'
-        value: gmailSmtpHost
+        name: 'MAIL_SMTP_HOST'
+        value: mailSmtpHost
       }
       {
-        name: 'GMAIL_SMTP_PORT'
-        value: gmailSmtpPort
+        name: 'MAIL_SMTP_PORT'
+        value: mailSmtpPort
       }
       {
-        name: 'GMAIL_SENDER_EMAIL_ADDRESS'
-        value: gmailSenderEmailAddress
+        name: 'MAIL_SENDER_EMAIL_ADDRESS'
+        value: mailSenderEmailAddress
       }
       {
-        name: 'GMAIL_SENDER_EMAIL_PASSWORD'
-        value: gmailSenderEmailPassword
+        name: 'MAIL_SENDER_EMAIL_PASSWORD'
+        value: mailSenderEmailPassword
       }
       {
-        name: 'GMAIL_SENDER_DISPLAY_NAME'
-        value: gmailSenderDisplayName
+        name: 'MAIL_SENDER_DISPLAY_NAME'
+        value: mailSenderDisplayName
+      }
+      {
+        name: 'MAIL_DUMMY_RECIPIENT_ADDRESS'
+        value: mailDummyRecipientAddress
       }
     ]
     targetPort: 8080

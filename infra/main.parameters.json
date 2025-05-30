@@ -137,20 +137,23 @@
     "postgresVersion": {
       "value": "${AZURE_POSTGRESQL_VERSION=16}"
     },
-    "gmailSmtpHost": {
-      "value": "${GMAIL_SMTP_HOST=smtp.gmail.com}"
+    "mailSmtpHost": {
+      "value": "${MAIL_SMTP_HOST=smtp.gmail.com}"
     },
-    "gmailSmtpPort": {
-      "value": "${GMAIL_SMTP_PORT=587}"
+    "mailSmtpPort": {
+      "value": "${MAIL_SMTP_PORT=587}"
     },
-    "gmailSenderEmailAddress": {
-      "value": "${GMAIL_SENDER_EMAIL_ADDRESS}"
+    "mailSenderEmailAddress": {
+      "value": "${MAIL_SENDER_EMAIL_ADDRESS}"
     },
-    "gmailSenderEmailPassword": {
-      "value": "${GMAIL_SENDER_EMAIL_PASSWORD}"
+    "mailSenderEmailPassword": {
+      "value": "${MAIL_SENDER_EMAIL_PASSWORD}"
     },
-    "gmailSenderDisplayName": {
-      "value": "${GMAIL_SENDER_DISPLAY_NAME}"
+    "mailSenderDisplayName": {
+      "value": "${MAIL_SENDER_DISPLAY_NAME}"
+    },
+    "mailDummyRecipientAddress": {
+      "value": "${MAIL_DUMMY_RECIPIENT_ADDRESS}"
     }
   }
 }

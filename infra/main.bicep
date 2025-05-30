@@ -218,22 +218,25 @@ param postgresStorageSizeGB int = 32
 @allowed(['11', '12', '13', '14', '15', '16'])
 param postgresVersion string = '16'
 
-// Gmail related settings
-@description('Gmail SMTP Host')
-param gmailSmtpHost string = 'smtp.gmail.com'
+// Mail related settings
+@description('Mail SMTP Host')
+param mailSmtpHost string = 'smtp.gmail.com'
 
-@description('Gmail SMTP Port')
-param gmailSmtpPort int = 587
+@description('Mail SMTP Port')
+param mailSmtpPort int = 587
 
-@description('Gmail Sender Email')
-param gmailSenderEmailAddress string
+@description('Mail Sender Email')
+param mailSenderEmailAddress string
 
-@description('Gmail Sender Password')
+@description('Mail Sender Password')
 @secure()
-param gmailSenderEmailPassword string
+param mailSenderEmailPassword string
 
-@description('Gmail Sender Display Name')
-param gmailSenderDisplayName string = 'Account Receivable'
+@description('Mail Sender Display Name')
+param mailSenderDisplayName string = 'Account Receivable'
+
+@description('Mail dummy recipient address to overwrite')
+param mailDummyRecipientAddress string = ''
 
 var abbrs = loadJsonContent('./abbreviations.json')
 var resourceToken = toLower(uniqueString(subscription().id, environmentName, location))
@@ -385,11 +388,12 @@ module web './app/web.bicep' = {
     openAiEmbeddingDeployment: useAOAI ? azureEmbeddingDeploymentName : ''
     serviceBinds: []
     postgresConnectionString: postgres.outputs.postgresConnectionString
-    gmailSmtpHost: gmailSmtpHost
-    gmailSmtpPort: gmailSmtpPort
-    gmailSenderEmailAddress: gmailSenderEmailAddress
-    gmailSenderEmailPassword: gmailSenderEmailPassword
-    gmailSenderDisplayName: gmailSenderDisplayName
+    mailSmtpHost: mailSmtpHost
+    mailSmtpPort: mailSmtpPort
+    mailSenderEmailAddress: mailSenderEmailAddress
+    mailSenderEmailPassword: mailSenderEmailPassword
+    mailSenderDisplayName: mailSenderDisplayName
+    mailDummyRecipientAddress: mailDummyRecipientAddress
   }
 }
 
@@ -435,11 +439,12 @@ module function './app/function.bicep' = {
       AZURE_COMPUTER_VISION_ENDPOINT: useVision ? computerVision.outputs.endpoint : ''
       OPENAI_API_KEY: useAOAI ? '' : openAIApiKey
       AZURE_POSTGRESQL_CONNECTION_STRING: postgres.outputs.postgresConnectionString
-      GMAIL_SMTP_HOST: gmailSmtpHost
-      GMAIL_SMTP_PORT: gmailSmtpPort
-      GMAIL_SENDER_EMAIL_ADDRESS: gmailSenderEmailAddress
-      GMAIL_SENDER_EMAIL_PASSWORD: gmailSenderEmailPassword
-      GMAIL_SENDER_DISPLAY_NAME: gmailSenderDisplayName
+      MAIL_SMTP_HOST: mailSmtpHost
+      MAIL_SMTP_PORT: mailSmtpPort
+      MAIL_SENDER_EMAIL_ADDRESS: mailSenderEmailAddress
+      MAIL_SENDER_EMAIL_PASSWORD: mailSenderEmailPassword
+      MAIL_SENDER_DISPLAY_NAME: mailSenderDisplayName
+      MAIL_DUMMY_RECIPIENT_ADDRESS: mailDummyRecipientAddress
     }
   }
 }
@@ -882,7 +887,8 @@ output AZURE_POSTGRESQL_CONNECTION_STRING string = postgres.outputs.postgresConn
 output AZURE_POSTGRESQL_LOCAL_CONN_STRING string = postgres.outputs.postgresLocalConnectionString
 output AZURE_POSTGRESQL_ADMINISTRATOR_LOGIN_PASSWORD string = postgres.outputs.postgresAdministratorLoginPassword
 
-// Gmail outputs
-output GMAIL_SMTP_HOST string = gmailSmtpHost
-output GMAIL_SMTP_PORT int = gmailSmtpPort
-output GMAIL_SENDER_DISPLAY_NAME string = gmailSenderDisplayName
+// Mail outputs
+output MAIL_SMTP_HOST string = mailSmtpHost
+output MAIL_SMTP_PORT int = mailSmtpPort
+output MAIL_SENDER_DISPLAY_NAME string = mailSenderDisplayName
+output MAIL_DUMMY_RECIPIENT_ADDRESS string = mailDummyRecipientAddress
