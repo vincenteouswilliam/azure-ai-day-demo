@@ -1,55 +1,60 @@
 ---
 page_type: sample
 languages:
-- azdeveloper
-- csharp
-- html
-- bicep
+  - azdeveloper
+  - csharp
+  - html
+  - bicep
 products:
-- ai-services
-- azure-blob-storage
-- azure-container-apps
-- azure-cognitive-search
-- azure-openai
-- aspnet-core
-- blazor
-- defender-for-cloud
-- azure-monitor
-- dotnet-maui
+  - ai-services
+  - azure-blob-storage
+  - azure-container-apps
+  - azure-cognitive-search
+  - azure-openai
+  - aspnet-core
+  - blazor
+  - defender-for-cloud
+  - azure-monitor
+  - dotnet-maui
+  - azure-postgresql-flexible-server
 urlFragment: azure-search-openai-demo-csharp
 name: ChatGPT + Enterprise data (csharp)
 description: A csharp sample app that chats with your data using OpenAI and AI Search.
 ---
+
 <!-- YAML front-matter schema: https://review.learn.microsoft.com/en-us/help/contribute/samples/process/onboarding?branch=main#supported-metadata-fields-for-readmemd -->
 
 ## Table of Contents
 
-- [Features](#features)
-- [Application Architecture](#application-architecture)
-- [Azure account requirements](#account-requirements)
-- [Getting Started](#getting-started)
-  - [Cost estimation](#cost-estimation)
-  - [Project setup](#project-setup)
-    - [GitHub Codespaces](#github-codespaces)
-    - [VS Code Dev Containers](#vs-code-remote-containers)
-    - [Local environment](#local-environment)
-  - [Deployment](#deployment)
-    - [Deploying from scratch](#deploying-from-scratch)
-    - [Deploying with existing Azure resources](#use-existing-resources)
-    - [Deploying again](#deploying-or-re-deploying-a-local-clone-of-the-repo)
-    - [Deploying App Spaces](#deploying-your-repo-using-app-spaces)
-    - [Running locally](#running-locally)
-    - [Sharing environments](#sharing-environments)
-    - [Clean up resources](#clean-up-resources)
-  - [Using the app](#using-the-app)
-- [Enabling optional features](#enabling-optional-features)
-  - [Enabling Application Insights](#enabling-optional-features)
-  - [Enabling authentication](#enabling-authentication)
-  - [Enable GPT-4V support](#enable-gpt-4v-support)
-- [Guidance](#guidance) 
-  - [Productionizing](#productionizing)
-  - [Resources](#resources)
-  - [FAQ](#faq)
+- [ChatGPT + Enterprise data with Azure OpenAI and Azure AI Search (.NET)](#chatgpt--enterprise-data-with-azure-openai-and-azure-ai-search-net)
+  - [Features](#features)
+  - [Application architecture](#application-architecture)
+  - [Getting Started](#getting-started)
+    - [Account Requirements](#account-requirements)
+    - [Cost estimation](#cost-estimation)
+    - [Project setup](#project-setup)
+      - [GitHub Codespaces](#github-codespaces)
+      - [VS Code Remote Containers](#vs-code-remote-containers)
+      - [Local environment](#local-environment)
+      - [Setting Up SMTP Related Environment Variables](#setting-up-smtp-related-environment-variables)
+    - [Deployment](#deployment)
+      - [Deploying from scratch](#deploying-from-scratch)
+      - [Use existing resources](#use-existing-resources)
+      - [Deploying or re-deploying a local clone of the repo](#deploying-or-re-deploying-a-local-clone-of-the-repo)
+      - [Deploying your repo using App Spaces](#deploying-your-repo-using-app-spaces)
+      - [Running locally](#running-locally)
+      - [Running locally with the .NET MAUI client](#running-locally-with-the-net-maui-client)
+      - [Sharing Environments](#sharing-environments)
+      - [Clean up resources](#clean-up-resources)
+    - [Using the app](#using-the-app)
+  - [Enabling optional features](#enabling-optional-features)
+    - [Enabling Application Insights](#enabling-application-insights)
+    - [Enabling authentication](#enabling-authentication)
+    - [Enable vision (multi-modal) support](#enable-vision-multi-modal-support)
+  - [Guidance](#guidance)
+    - [Productionizing](#productionizing)
+    - [Resources](#resources)
+    - [FAQ](#faq)
 
 # ChatGPT + Enterprise data with Azure OpenAI and Azure AI Search (.NET)
 
@@ -77,6 +82,7 @@ We want to hear from you! Are you interested in building or currently building i
 - Voice Chat, Chat and Q&A interfaces
 - Explores various options to help users evaluate the trustworthiness of responses with citations, tracking of source content, etc.
 - Shows possible approaches for data preparation, prompt construction, and orchestration of interaction between model (ChatGPT) and retriever (Azure AI Search)
+- Integration with a PostgreSQL server to perform query based on user prompts
 - Settings directly in the UX to tweak the behavior and experiment with options
 
 ![Chat screen](docs/chatscreen.png)
@@ -85,8 +91,8 @@ We want to hear from you! Are you interested in building or currently building i
 
 - **User interface** - The application’s chat interface is a [Blazor WebAssembly](https://learn.microsoft.com/aspnet/core/blazor/) application. This interface is what accepts user queries, routes request to the application backend, and displays generated responses.
 - **Backend** - The application backend is an [ASP.NET Core Minimal API](https://learn.microsoft.com/aspnet/core/fundamentals/minimal-apis/overview). The backend hosts the Blazor static web application and what orchestrates the interactions among the different services. Services used in this application include:
-   - [**Azure AI Search**](https://learn.microsoft.com/azure/search/search-what-is-azure-search) – indexes documents from the data stored in an Azure Storage Account. This makes the documents searchable using [vector search](https://learn.microsoft.com/azure/search/search-get-started-vector) capabilities. 
-   - [**Azure OpenAI Service**](https://learn.microsoft.com/azure/ai-services/openai/overview) – provides the Large Language Models to generate responses. [Semantic Kernel](https://learn.microsoft.com/semantic-kernel/whatissk) is used in conjunction with the Azure OpenAI Service to orchestrate the more complex AI workflows.
+  - [**Azure AI Search**](https://learn.microsoft.com/azure/search/search-what-is-azure-search) – indexes documents from the data stored in an Azure Storage Account. This makes the documents searchable using [vector search](https://learn.microsoft.com/azure/search/search-get-started-vector) capabilities.
+  - [**Azure OpenAI Service**](https://learn.microsoft.com/azure/ai-services/openai/overview) – provides the Large Language Models to generate responses. [Semantic Kernel](https://learn.microsoft.com/semantic-kernel/whatissk) is used in conjunction with the Azure OpenAI Service to orchestrate the more complex AI workflows.
 
 ## Getting Started
 
@@ -105,11 +111,12 @@ In order to deploy and run this example, you'll need
 Pricing varies per region and usage, so it isn't possible to predict exact costs for your usage. However, you can try the [Azure pricing calculator](https://azure.microsoft.com/pricing/calculator/) for the resources below:
 
 - [**Azure Container Apps**](https://azure.microsoft.com/pricing/details/container-apps/). Environment type: Consumption Only. The solution uses the Consumption plan, as we don't have specific hardware requirements.
-- [**Azure OpenAI Service**](https://azure.microsoft.com/pricing/details/cognitive-services/openai-service/). Standard tier, GPT and Ada models. Pricing per 1K tokens used, and at least 1K tokens are used per question. 
+- [**Azure OpenAI Service**](https://azure.microsoft.com/pricing/details/cognitive-services/openai-service/). Standard tier, GPT and Ada models. Pricing per 1K tokens used, and at least 1K tokens are used per question.
 - [**Azure AI Document Intelligence**](https://azure.microsoft.com/pricing/details/ai-document-intelligence/). SO (Standard) tier using pre-built layout. Pricing per document page, sample documents have 261 pages total.
 - [**Azure AI Search**](https://azure.microsoft.com/pricing/details/search/) Basic tier, 1 replica, free level of semantic search. Pricing per hour.
-- [**Azure Blob Storage**](https://azure.microsoft.com/pricing/details/storage/blobs/). Standard tier with ZRS (Zone-redundant storage). Pricing per storage and read operations. 
+- [**Azure Blob Storage**](https://azure.microsoft.com/pricing/details/storage/blobs/). Standard tier with ZRS (Zone-redundant storage). Pricing per storage and read operations.
 - [**Azure Monitor**](https://azure.microsoft.com/pricing/details/monitor/). Pay-as-you-go tier. Costs based on data ingested.
+- [**Azure PostgreSQL Flexible Server**](https://azure.microsoft.com/en-us/pricing/details/postgresql/flexible-server/). Pay-as-you-go tier. Burstable B2s instance (Standard_B2s SKU).
 
 To reduce costs, you can switch to free SKUs for various services, but those SKUs have limitations. See this [guide on deploying with minimal costs](./docs/deploy_lowcost.md) for more details.
 
@@ -139,20 +146,65 @@ Install the following prerequisites:
 - [.NET 8](https://dotnet.microsoft.com/download/dotnet/8.0)
 - [Git](https://git-scm.com/downloads)
 - [Powershell 7+ (pwsh)](https://github.com/powershell/powershell) - For Windows users only.
-  
-   > **Important**: 
-   > Ensure you can run `pwsh.exe` from a PowerShell command. If this fails, you likely need to upgrade PowerShell.
+
+  > **Important**:
+  > Ensure you can run `pwsh.exe` from a PowerShell command. If this fails, you likely need to upgrade PowerShell.
 
 - [Docker](https://www.docker.com/products/docker-desktop/)
 
-   > **Important**:
-   > Ensure Docker is running before running any `azd` provisioning / deployment commands.
+  > **Important**:
+  > Ensure Docker is running before running any `azd` provisioning / deployment commands. For MacOS user, consider using [**OrbStack**](https://orbstack.dev/download) instead of the regular Docker Desktop
+
+- [PSQL](https://www.postgresql.org/docs/current/app-psql.html) - Install the version based on your OS:
+  - **Windows** - Download PostgreSQL client tools from [Enterprise DB](https://www.enterprisedb.com/downloads/postgres-postgresql-downloads) site. Choose the most suitable version and make sure to install `psql` client.
+  - **Linux** - You can download the installer from Enterprise DB site just like Windows or install `psql` client from the distro's package manager.<br />
+  For example: Installing `psql` client in Ubuntu/Debian
+  ```bash
+  $ sudo apt update
+  $ sudo apt install postgresql-client
+  ```
+  - **MacOS** - Use `brew` to install `libpq` library. Perform the commands as follow:
+  ```zsh
+  $ brew install libpq
+  $ brew link --force libpq
+  ```
 
 Then, run the following commands to get the project on your local environment:
 
-   1. Run `azd auth login`
-   1. Clone the repository or run `azd init -t azure-search-openai-demo-csharp`
-   1. Run `azd env new azure-search-openai-demo-csharp`
+1.  Run `azd auth login`
+2.  Clone the repository or run `azd init -t azure-search-openai-demo-csharp`
+3.  Run `azd env new {environment name}`
+    > **Important**:
+    > Your environment name will be used as the resource group name created in Azure preceeded with "rg-" prefix.
+
+For current deployment, you also need to provide information related to SMTP server for mailing activities as follows:
+
+- `MAIL_SMTP_HOST`: The SMTP server for your email client. Defaults to `smtp.gmail.com` (Gmail service).
+- `MAIL_SMTP_PORT`: Port number used by the SMTP server. Defaults to `587`.
+- `MAIL_SENDER_EMAIL_ADDRESS`: **[Mandatory]** The email address used to send the email. No default value.
+- `MAIL_SENDER_EMAIL_PASSWORD`: **[Mandatory]** Email account password for the email address. No default value.
+- `MAIL_SENDER_DISPLAY_NAME`: **[Mandatory]** Alias display name for the email sender. No default value.
+- `MAIL_DUMMY_RECIPIENT_ADDRESS`: Dummy recipient address during mail sending activity. Important: Only set this if you're in testing phase and using dummy data. Otherwise, leave it unset.
+
+> **Important**:
+> For 2FA users (which should be everyone), you need to configure an app code authentication instead of regular authentication. Using app code will ease the application to perform authentication to the SMTP server
+
+#### Setting Up SMTP Related Environment Variables
+
+> **Important**:
+> Please perform this step before running with the actual deployment
+
+As noted in the previous section, SMTP service to be used is defaulted to Gmail. However, you can set your own preferred SMTP service by changing the `MAIL_*` environment variables using this command:
+
+```bash
+# Basic command
+azd env set <MAIL env variable> <value>
+
+# e.g. Setting up Office 365 SMTP server
+azd env set MAIL_SMTP_HOST "smtp.office365.com"
+```
+
+Make sure to complete the environment variables' setup **_if and only if_** you want to enable email action from prompt. Email action is designed as a plugin to the actual application and will not disturb other functionalities.
 
 ### Deployment
 
@@ -167,7 +219,8 @@ Then, run the following commands to get the project on your local environment:
 Execute the following command, if you don't have any pre-existing Azure services and want to start from a fresh deployment.
 
 1. Run `azd up` - This will provision Azure resources and deploy this sample to those resources, including building the search index based on the files found in the `./data` folder.
-   - For the target location, the regions that currently support the model used in this sample are **East US**. For an up-to-date list of regions and models, check [here](https://learn.microsoft.com/azure/cognitive-services/openai/concepts/models)
+
+   - For the target location, the regions that currently support the model used in this application and surrounding infrastructure instances are **West US**. For an up-to-date list of regions and models, check [here](https://learn.microsoft.com/azure/cognitive-services/openai/concepts/models)
    - If you have access to multiple Azure subscriptions, you will be prompted to select the subscription you want to use. If you only have access to one subscription, it will be selected automatically.
 
    > **Note**:
@@ -193,7 +246,7 @@ If you have existing resources in Azure that you wish to use, you can configure 
 1. Run `azd env set AZURE_OPENAI_EMBEDDING_DEPLOYMENT {Name of existing embedding model deployment}`. Only needed if your embedding model deployment is not the default `embedding`.
 1. Run `azd up`
 
-> [!NOTE]<br> 
+> [!NOTE]<br>
 > You can also use existing Search and Storage Accounts. See `./infra/main.parameters.json` for list of environment variables to pass to `azd env set` to configure those existing resources.
 
 #### Deploying or re-deploying a local clone of the repo
@@ -271,7 +324,7 @@ This sample includes a .NET MAUI client, packaging the experience as an app that
 Run the following if you want to give someone else access to the deployed and existing environment.
 
 1. Install the [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli)
-1. Run `azd init -t azure-search-openai-demo-csharp`
+1. Run `azd init -t {environment name}`
 1. Run `azd env refresh -e {environment name}` - Note that they will need the azd environment name, subscription Id, and location to run this command - you can find those values in your `./azure/{env name}/.env` file. This will populate their azd environment's .env file with all the settings needed to run the app locally.
 1. Run `pwsh ./scripts/roles.ps1` - This will assign all of the necessary roles to the user so they can run the app locally. If they do not have the necessary permission to create roles in the subscription, then you may need to run this script for them. Just be sure to set the `AZURE_PRINCIPAL_ID` environment variable in the azd .env file or in the active shell to their Azure Id, which they can get with `az account show`.
 
@@ -310,9 +363,9 @@ To see any exceptions and server errors, navigate to the "Investigate -> Failure
 
 ### Enabling authentication
 
-By default, the deployed Azure container app will have no authentication or access restrictions enabled, meaning anyone with routable network access to the container app can chat with your indexed data.  You can require authentication to your Azure Active Directory by following the [Add container app authentication](https://learn.microsoft.com/azure/container-apps/authentication-azure-active-directory) tutorial and set it up against the deployed container app.
+By default, the deployed Azure container app will have no authentication or access restrictions enabled, meaning anyone with routable network access to the container app can chat with your indexed data. You can require authentication to your Azure Active Directory by following the [Add container app authentication](https://learn.microsoft.com/azure/container-apps/authentication-azure-active-directory) tutorial and set it up against the deployed container app.
 
-To then limit access to a specific set of users or groups, you can follow the steps from [Restrict your Azure AD app to a set of users](https://learn.microsoft.com/azure/active-directory/develop/howto-restrict-your-app-to-a-set-of-users) by changing "Assignment Required?" option under the Enterprise Application, and then assigning users/groups access.  Users not granted explicit access will receive the error message -AADSTS50105: Your administrator has configured the application <app_name> to block users unless they are specifically granted ('assigned') access to the application.-
+To then limit access to a specific set of users or groups, you can follow the steps from [Restrict your Azure AD app to a set of users](https://learn.microsoft.com/azure/active-directory/develop/howto-restrict-your-app-to-a-set-of-users) by changing "Assignment Required?" option under the Enterprise Application, and then assigning users/groups access. Users not granted explicit access will receive the error message -AADSTS50105: Your administrator has configured the application <app_name> to block users unless they are specifically granted ('assigned') access to the application.-
 
 ### Enable vision (multi-modal) support
 
